@@ -568,7 +568,10 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      calculate_distance_miles: {
+        Args: { lat1: number; lat2: number; lon1: number; lon2: number }
+        Returns: number
+      }
     }
     Enums: {
       acceptance_likelihood: "high" | "medium" | "low"
