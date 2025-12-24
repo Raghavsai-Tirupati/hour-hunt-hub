@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Star, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Star, User, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 
 interface Review {
@@ -24,19 +25,34 @@ interface ReviewsListProps {
   refreshTrigger?: number;
 }
 
+const INITIAL_REVIEWS = 5;
+const LOAD_MORE_COUNT = 5;
+
 const ReviewsList = ({ opportunityId, refreshTrigger }: ReviewsListProps) => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [displayCount, setDisplayCount] = useState(INITIAL_REVIEWS);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     const fetchReviews = async () => {
       setLoading(true);
       try {
+        // First get total count
+        const { count } = await supabase
+          .from("reviews")
+          .select("*", { count: "exact", head: true })
+          .eq("opportunity_id", opportunityId);
+
+        setTotalCount(count || 0);
+
+        // Then fetch the actual reviews
         const { data, error } = await supabase
           .from("reviews")
           .select("*, profiles(full_name)")
           .eq("opportunity_id", opportunityId)
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .limit(displayCount);
 
         if (error) throw error;
         setReviews((data as Review[]) || []);
@@ -48,7 +64,16 @@ const ReviewsList = ({ opportunityId, refreshTrigger }: ReviewsListProps) => {
     };
 
     fetchReviews();
+  }, [opportunityId, refreshTrigger, displayCount]);
+
+  // Reset display count when opportunity changes or refresh triggered
+  useEffect(() => {
+    setDisplayCount(INITIAL_REVIEWS);
   }, [opportunityId, refreshTrigger]);
+
+  const handleLoadMore = () => {
+    setDisplayCount((prev) => prev + LOAD_MORE_COUNT);
+  };
 
   const StarDisplay = ({ rating }: { rating: number }) => (
     <div className="flex gap-0.5">
@@ -63,7 +88,7 @@ const ReviewsList = ({ opportunityId, refreshTrigger }: ReviewsListProps) => {
     </div>
   );
 
-  if (loading) {
+  if (loading && reviews.length === 0) {
     return (
       <div className="text-center py-4 text-muted-foreground">
         Loading reviews...
@@ -79,10 +104,12 @@ const ReviewsList = ({ opportunityId, refreshTrigger }: ReviewsListProps) => {
     );
   }
 
+  const hasMore = reviews.length < totalCount;
+
   return (
     <div className="space-y-4">
       <h4 className="font-medium text-sm text-muted-foreground">
-        {reviews.length} Review{reviews.length !== 1 ? "s" : ""}
+        {totalCount} Review{totalCount !== 1 ? "s" : ""}
       </h4>
       {reviews.map((review) => (
         <Card key={review.id} className="bg-muted/30">
@@ -132,6 +159,19 @@ const ReviewsList = ({ opportunityId, refreshTrigger }: ReviewsListProps) => {
           </CardContent>
         </Card>
       ))}
+      
+      {hasMore && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full"
+          onClick={handleLoadMore}
+          disabled={loading}
+        >
+          <ChevronDown className="h-4 w-4 mr-2" />
+          {loading ? "Loading..." : `Show More Reviews (${totalCount - reviews.length} remaining)`}
+        </Button>
+      )}
     </div>
   );
 };

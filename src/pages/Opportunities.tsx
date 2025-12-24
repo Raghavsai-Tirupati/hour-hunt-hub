@@ -9,46 +9,42 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, MapPin, Clock, Phone, Mail, Star, AlertCircle, ChevronDown, MessageCircle } from "lucide-react";
+import { Search, MapPin, Clock, Phone, Mail, Star, AlertCircle, ChevronDown, MessageCircle, Loader2 } from "lucide-react";
 import { ReminderDialog } from "@/components/ReminderDialog";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useOpportunities } from "@/hooks/useOpportunities";
 import opportunitiesAccent from "@/assets/opportunities-accent.png";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewsList from "@/components/ReviewsList";
 import { QASection } from "@/components/QASection";
 
-interface Opportunity {
-  id: string;
-  name: string;
-  type: string;
-  location: string;
-  latitude: number | null;
-  longitude: number | null;
-  hours_required: string;
-  acceptance_likelihood: string;
-  description: string | null;
-  requirements: string[];
-  phone: string | null;
-  email: string | null;
-  website: string | null;
-  avg_rating?: number;
-  review_count?: number;
-  distance?: number;
-}
-
 const Opportunities = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [expandedReviews, setExpandedReviews] = useState<Record<string, boolean>>({});
   const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Use debounced search
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const { opportunities, loading, hasMore, loadMore, totalCount } = useOpportunities({
+    userLocation,
+    filterType,
+    searchTerm: debouncedSearch,
+    pageSize: 20,
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -76,93 +72,6 @@ const Opportunities = () => {
       );
     }
   }, [toast]);
-
-  useEffect(() => {
-    const fetchOpportunities = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("opportunities_with_ratings")
-          .select("*");
-
-        if (error) throw error;
-
-        let processedData: Opportunity[] = data.map((opp: any) => ({
-          id: opp.id,
-          name: opp.name,
-          type: opp.type,
-          location: opp.location,
-          latitude: opp.latitude,
-          longitude: opp.longitude,
-          hours_required: opp.hours_required,
-          acceptance_likelihood: opp.acceptance_likelihood,
-          description: opp.description,
-          requirements: opp.requirements || [],
-          phone: opp.phone,
-          email: opp.email,
-          website: opp.website,
-          avg_rating: opp.avg_rating,
-          review_count: opp.review_count,
-          distance: undefined,
-        }));
-
-        if (userLocation) {
-          processedData = processedData.map((opp) => ({
-            ...opp,
-            distance: opp.latitude && opp.longitude
-              ? calculateDistance(
-                  userLocation.lat,
-                  userLocation.lng,
-                  opp.latitude,
-                  opp.longitude
-                )
-              : undefined,
-          }));
-
-          processedData.sort((a, b) => {
-            if (a.distance === undefined) return 1;
-            if (b.distance === undefined) return -1;
-            return a.distance - b.distance;
-          });
-        }
-
-        setOpportunities(processedData);
-      } catch (error) {
-        console.error("Error fetching opportunities:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load opportunities. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchOpportunities();
-    }
-  }, [user, userLocation, toast]);
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 3959;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  const filteredOpportunities = opportunities.filter(
-    (opp) =>
-      (filterType === "all" || opp.type.toLowerCase() === filterType.toLowerCase()) &&
-      (opp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        opp.location.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   const getAcceptanceColor = (rate: string) => {
     switch (rate.toLowerCase()) {
@@ -241,12 +150,12 @@ const Opportunities = () => {
             </Select>
           </div>
 
-          {loading ? (
+          {loading && opportunities.length === 0 ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
               <p className="text-muted-foreground">Loading opportunities...</p>
             </div>
-          ) : filteredOpportunities.length === 0 ? (
+          ) : opportunities.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -258,12 +167,12 @@ const Opportunities = () => {
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <p className="text-sm text-muted-foreground">
-                  Showing {filteredOpportunities.length} opportunities
+                  Showing {opportunities.length} of {totalCount} opportunities
                   {userLocation && " sorted by distance"}
                 </p>
               </div>
 
-              {filteredOpportunities.map((opportunity) => (
+              {opportunities.map((opportunity) => (
                 <Card key={opportunity.id} className="hover:border-primary transition-colors">
                   <CardHeader>
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -399,6 +308,31 @@ const Opportunities = () => {
                   </CardContent>
                 </Card>
               ))}
+
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={loadMore}
+                    disabled={loading}
+                    className="min-w-[200px]"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="mr-2 h-4 w-4" />
+                        Load More Opportunities
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

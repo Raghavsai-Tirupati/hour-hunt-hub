@@ -38,6 +38,10 @@ interface QASectionProps {
   opportunityName: string;
 }
 
+const INITIAL_QUESTIONS = 5;
+const LOAD_MORE_COUNT = 5;
+const INITIAL_ANSWERS = 3;
+
 export function QASection({ opportunityId, opportunityName }: QASectionProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,14 +49,24 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
   const [newQuestion, setNewQuestion] = useState({ title: "", body: "" });
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, Answer[]>>({});
+  const [answerCounts, setAnswerCounts] = useState<Record<string, number>>({});
   const [newAnswer, setNewAnswer] = useState<Record<string, string>>({});
   const [userVotes, setUserVotes] = useState<Record<string, number>>({});
   const [userId, setUserId] = useState<string | null>(null);
+  const [displayCount, setDisplayCount] = useState(INITIAL_QUESTIONS);
+  const [totalQuestionCount, setTotalQuestionCount] = useState(0);
+  const [answerDisplayCount, setAnswerDisplayCount] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   useEffect(() => {
     fetchQuestions();
     fetchUserId();
+    fetchUserVotes();
+  }, [opportunityId]);
+
+  // Reset display count when opportunity changes
+  useEffect(() => {
+    setDisplayCount(INITIAL_QUESTIONS);
   }, [opportunityId]);
 
   const fetchUserId = async () => {
@@ -60,13 +74,39 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
     setUserId(user?.id || null);
   };
 
+  const fetchUserVotes = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: votes } = await supabase
+        .from("discussion_votes")
+        .select("votable_id, value")
+        .eq("user_id", user.id);
+
+      if (votes) {
+        const voteMap: Record<string, number> = {};
+        votes.forEach(v => { voteMap[v.votable_id] = v.value; });
+        setUserVotes(voteMap);
+      }
+    }
+  };
+
   const fetchQuestions = async () => {
     setLoading(true);
+    
+    // Get total count
+    const { count } = await supabase
+      .from("questions_with_votes")
+      .select("*", { count: "exact", head: true })
+      .eq("opportunity_id", opportunityId);
+
+    setTotalQuestionCount(count || 0);
+
     const { data, error } = await supabase
       .from("questions_with_votes")
       .select("*")
       .eq("opportunity_id", opportunityId)
-      .order("vote_count", { ascending: false });
+      .order("vote_count", { ascending: false })
+      .limit(displayCount);
 
     if (error) {
       console.error("Error fetching questions:", error);
@@ -76,33 +116,57 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
     setLoading(false);
   };
 
+  // Refetch when displayCount changes
+  useEffect(() => {
+    if (!loading) {
+      fetchQuestions();
+    }
+  }, [displayCount]);
+
   const fetchAnswers = async (questionId: string) => {
+    const limit = answerDisplayCount[questionId] || INITIAL_ANSWERS;
+    
+    // Get total count for this question
+    const { count } = await supabase
+      .from("answers_with_votes")
+      .select("*", { count: "exact", head: true })
+      .eq("question_id", questionId);
+
+    setAnswerCounts(prev => ({ ...prev, [questionId]: count || 0 }));
+
     const { data, error } = await supabase
       .from("answers_with_votes")
       .select("*")
       .eq("question_id", questionId)
-      .order("vote_count", { ascending: false });
+      .order("vote_count", { ascending: false })
+      .limit(limit);
 
     if (error) {
       console.error("Error fetching answers:", error);
     } else {
       setAnswers(prev => ({ ...prev, [questionId]: data || [] }));
     }
-
-    // Fetch user's votes for this question and its answers
-    if (userId) {
-      const { data: votes } = await supabase
-        .from("discussion_votes")
-        .select("votable_id, value")
-        .eq("user_id", userId);
-
-      if (votes) {
-        const voteMap: Record<string, number> = {};
-        votes.forEach(v => { voteMap[v.votable_id] = v.value; });
-        setUserVotes(prev => ({ ...prev, ...voteMap }));
-      }
-    }
   };
+
+  const handleLoadMoreQuestions = () => {
+    setDisplayCount(prev => prev + LOAD_MORE_COUNT);
+  };
+
+  const handleLoadMoreAnswers = (questionId: string) => {
+    setAnswerDisplayCount(prev => ({
+      ...prev,
+      [questionId]: (prev[questionId] || INITIAL_ANSWERS) + LOAD_MORE_COUNT
+    }));
+  };
+
+  // Refetch answers when display count changes
+  useEffect(() => {
+    Object.keys(answerDisplayCount).forEach(questionId => {
+      if (expandedQuestion === questionId) {
+        fetchAnswers(questionId);
+      }
+    });
+  }, [answerDisplayCount]);
 
   const handleAskQuestion = async () => {
     if (!newQuestion.title.trim()) return;
@@ -201,17 +265,20 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
     } else {
       setExpandedQuestion(questionId);
       if (!answers[questionId]) {
+        setAnswerDisplayCount(prev => ({ ...prev, [questionId]: INITIAL_ANSWERS }));
         fetchAnswers(questionId);
       }
     }
   };
+
+  const hasMoreQuestions = questions.length < totalQuestionCount;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <MessageCircle className="h-4 w-4" />
-          <span>{questions.length} questions</span>
+          <span>{totalQuestionCount} questions</span>
         </div>
         {!showAskForm && (
           <Button
@@ -263,121 +330,154 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
         </p>
       ) : (
         <div className="space-y-3">
-          {questions.map((question) => (
-            <div key={question.id} className="border rounded-lg overflow-hidden">
-              <div
-                className="flex gap-3 p-3 cursor-pointer hover:bg-muted/30 transition-colors"
-                onClick={() => toggleQuestion(question.id)}
-              >
-                {/* Vote buttons */}
-                <div className="flex flex-col items-center gap-0.5 min-w-[40px]">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleVote(question.id, "question", 1);
-                    }}
-                    className={`p-1 rounded hover:bg-muted ${
-                      userVotes[question.id] === 1 ? "text-primary" : "text-muted-foreground"
-                    }`}
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </button>
-                  <span className="text-sm font-medium">{question.vote_count}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleVote(question.id, "question", -1);
-                    }}
-                    className={`p-1 rounded hover:bg-muted ${
-                      userVotes[question.id] === -1 ? "text-destructive" : "text-muted-foreground"
-                    }`}
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
-                </div>
+          {questions.map((question) => {
+            const questionAnswers = answers[question.id] || [];
+            const totalAnswers = answerCounts[question.id] || question.answer_count;
+            const hasMoreAnswers = questionAnswers.length < totalAnswers;
 
-                {/* Question content */}
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm">{question.title}</h4>
-                  {question.body && (
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {question.body}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                    <span>{question.author_name || "Anonymous"}</span>
-                    <span>•</span>
-                    <span>{formatDistanceToNow(new Date(question.created_at), { addSuffix: true })}</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" />
-                      {question.answer_count} answers
-                    </span>
+            return (
+              <div key={question.id} className="border rounded-lg overflow-hidden">
+                <div
+                  className="flex gap-3 p-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                  onClick={() => toggleQuestion(question.id)}
+                >
+                  {/* Vote buttons */}
+                  <div className="flex flex-col items-center gap-0.5 min-w-[40px]">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleVote(question.id, "question", 1);
+                      }}
+                      className={`p-1 rounded hover:bg-muted ${
+                        userVotes[question.id] === 1 ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                    <span className="text-sm font-medium">{question.vote_count}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleVote(question.id, "question", -1);
+                      }}
+                      className={`p-1 rounded hover:bg-muted ${
+                        userVotes[question.id] === -1 ? "text-destructive" : "text-muted-foreground"
+                      }`}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
                   </div>
-                </div>
-              </div>
 
-              {/* Expanded answers */}
-              <Collapsible open={expandedQuestion === question.id}>
-                <CollapsibleContent>
-                  <div className="border-t bg-muted/20 p-3 space-y-3">
-                    {answers[question.id]?.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No answers yet.</p>
-                    ) : (
-                      answers[question.id]?.map((answer) => (
-                        <div key={answer.id} className="flex gap-3 p-2 rounded bg-background">
-                          <div className="flex flex-col items-center gap-0.5 min-w-[32px]">
-                            <button
-                              onClick={() => handleVote(answer.id, "answer", 1)}
-                              className={`p-0.5 rounded hover:bg-muted ${
-                                userVotes[answer.id] === 1 ? "text-primary" : "text-muted-foreground"
-                              }`}
-                            >
-                              <ChevronUp className="h-3 w-3" />
-                            </button>
-                            <span className="text-xs font-medium">{answer.vote_count}</span>
-                            <button
-                              onClick={() => handleVote(answer.id, "answer", -1)}
-                              className={`p-0.5 rounded hover:bg-muted ${
-                                userVotes[answer.id] === -1 ? "text-destructive" : "text-muted-foreground"
-                              }`}
-                            >
-                              <ChevronDown className="h-3 w-3" />
-                            </button>
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm">{answer.body}</p>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                              <span>{answer.author_name || "Anonymous"}</span>
-                              <span>•</span>
-                              <span>{formatDistanceToNow(new Date(answer.created_at), { addSuffix: true })}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))
+                  {/* Question content */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm">{question.title}</h4>
+                    {question.body && (
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                        {question.body}
+                      </p>
                     )}
-
-                    {/* Answer form */}
-                    <div className="flex gap-2 pt-2">
-                      <Textarea
-                        placeholder="Write an answer..."
-                        value={newAnswer[question.id] || ""}
-                        onChange={(e) => setNewAnswer(prev => ({ ...prev, [question.id]: e.target.value }))}
-                        className="min-h-[40px] text-sm"
-                      />
-                      <Button
-                        size="icon"
-                        onClick={() => handleAnswer(question.id)}
-                        disabled={!newAnswer[question.id]?.trim()}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                      <span>{question.author_name || "Anonymous"}</span>
+                      <span>•</span>
+                      <span>{formatDistanceToNow(new Date(question.created_at), { addSuffix: true })}</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        {totalAnswers} answers
+                      </span>
                     </div>
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-          ))}
+                </div>
+
+                {/* Expanded answers */}
+                <Collapsible open={expandedQuestion === question.id}>
+                  <CollapsibleContent>
+                    <div className="border-t bg-muted/20 p-3 space-y-3">
+                      {questionAnswers.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No answers yet.</p>
+                      ) : (
+                        <>
+                          {questionAnswers.map((answer) => (
+                            <div key={answer.id} className="flex gap-3 p-2 rounded bg-background">
+                              <div className="flex flex-col items-center gap-0.5 min-w-[32px]">
+                                <button
+                                  onClick={() => handleVote(answer.id, "answer", 1)}
+                                  className={`p-0.5 rounded hover:bg-muted ${
+                                    userVotes[answer.id] === 1 ? "text-primary" : "text-muted-foreground"
+                                  }`}
+                                >
+                                  <ChevronUp className="h-3 w-3" />
+                                </button>
+                                <span className="text-xs font-medium">{answer.vote_count}</span>
+                                <button
+                                  onClick={() => handleVote(answer.id, "answer", -1)}
+                                  className={`p-0.5 rounded hover:bg-muted ${
+                                    userVotes[answer.id] === -1 ? "text-destructive" : "text-muted-foreground"
+                                  }`}
+                                >
+                                  <ChevronDown className="h-3 w-3" />
+                                </button>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm">{answer.body}</p>
+                                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                  <span>{answer.author_name || "Anonymous"}</span>
+                                  <span>•</span>
+                                  <span>{formatDistanceToNow(new Date(answer.created_at), { addSuffix: true })}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {hasMoreAnswers && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => handleLoadMoreAnswers(question.id)}
+                            >
+                              <ChevronDown className="h-4 w-4 mr-2" />
+                              Show More Answers ({totalAnswers - questionAnswers.length} remaining)
+                            </Button>
+                          )}
+                        </>
+                      )}
+
+                      {/* Answer form */}
+                      <div className="flex gap-2 pt-2">
+                        <Textarea
+                          placeholder="Write an answer..."
+                          value={newAnswer[question.id] || ""}
+                          onChange={(e) => setNewAnswer(prev => ({ ...prev, [question.id]: e.target.value }))}
+                          className="min-h-[40px] text-sm"
+                        />
+                        <Button
+                          size="icon"
+                          onClick={() => handleAnswer(question.id)}
+                          disabled={!newAnswer[question.id]?.trim()}
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            );
+          })}
+          
+          {hasMoreQuestions && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              onClick={handleLoadMoreQuestions}
+              disabled={loading}
+            >
+              <ChevronDown className="h-4 w-4 mr-2" />
+              {loading ? "Loading..." : `Show More Questions (${totalQuestionCount - questions.length} remaining)`}
+            </Button>
+          )}
         </div>
       )}
     </div>
