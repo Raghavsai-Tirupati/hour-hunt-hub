@@ -39,19 +39,19 @@ const Home = () => {
       {/* Hero Section with Video Background */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden">
         {/* Video Background */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 overflow-hidden">
           <video
             autoPlay
             muted
             loop
             playsInline
             poster={heroImage}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover scale-110 origin-top-left"
           >
             <source src={heroVideo} type="video/mp4" />
           </video>
           {/* Gradient Overlay for readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-background/50" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/50 to-transparent" />
         </div>
         
         <div className="container mx-auto px-4 relative z-10">
