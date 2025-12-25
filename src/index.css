@@ -8,124 +8,121 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Swirl Logo Palette - Slate blue text, dark grey cards */
-    --background: 220 10% 95%;
-    --foreground: 215 30% 40%;
+    /* Cohesive Slate Blue & Grey Theme */
+    --background: 220 15% 95%;
+    --foreground: 215 25% 35%;
 
-    --card: 220 8% 25%;
-    --card-foreground: 210 20% 85%;
+    --card: 220 12% 22%;
+    --card-foreground: 210 20% 90%;
 
-    --popover: 220 8% 25%;
-    --popover-foreground: 210 20% 85%;
+    --popover: 220 12% 22%;
+    --popover-foreground: 210 20% 90%;
 
-    --primary: 12 55% 55%;
+    --primary: 215 45% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 10% 30%;
-    --secondary-foreground: 210 20% 85%;
+    --secondary: 220 12% 28%;
+    --secondary-foreground: 210 20% 88%;
 
-    --muted: 220 8% 35%;
+    --muted: 220 10% 32%;
     --muted-foreground: 210 15% 65%;
 
-    --accent: 210 25% 70%;
-    --accent-foreground: 220 8% 20%;
+    --accent: 210 30% 60%;
+    --accent-foreground: 220 12% 18%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 10% 35%;
-    --input: 220 10% 35%;
-    --ring: 12 55% 55%;
+    --border: 220 12% 30%;
+    --input: 220 12% 30%;
+    --ring: 215 45% 50%;
 
     --radius: 0.75rem;
     
-    /* Custom design tokens - Swirl Logo */
-    --hero-gradient-start: 12 55% 55%;
-    --hero-gradient-end: 25 50% 75%;
-    --success: 210 25% 50%;
+    /* Custom design tokens - Slate Blue */
+    --hero-gradient-start: 215 45% 50%;
+    --hero-gradient-end: 210 30% 60%;
+    --success: 180 35% 45%;
     --success-foreground: 0 0% 100%;
-    
-    /* Terracotta shades */
-    --terracotta-50: 25 40% 97%;
-    --terracotta-100: 25 45% 92%;
-    --terracotta-200: 25 45% 85%;
-    --terracotta-300: 20 50% 75%;
-    --terracotta-400: 15 55% 65%;
-    --terracotta-500: 12 55% 55%;
-    --terracotta-600: 10 55% 45%;
-    --terracotta-700: 8 55% 38%;
     
     /* Slate blue shades */
     --slate-50: 210 20% 96%;
     --slate-100: 210 18% 90%;
     --slate-200: 210 18% 82%;
     --slate-300: 210 20% 70%;
-    --slate-400: 215 22% 58%;
-    --slate-500: 220 20% 45%;
+    --slate-400: 215 25% 55%;
+    --slate-500: 215 30% 45%;
+    --slate-600: 220 30% 35%;
+    --slate-700: 220 25% 25%;
     
-    /* Dusty purple accent */
-    --purple-300: 280 15% 65%;
-    --purple-400: 280 18% 55%;
-    --purple-500: 280 20% 45%;
+    /* Grey shades */
+    --grey-50: 220 10% 96%;
+    --grey-100: 220 10% 90%;
+    --grey-200: 220 10% 80%;
+    --grey-300: 220 10% 65%;
+    --grey-400: 220 10% 45%;
+    --grey-500: 220 10% 30%;
+    --grey-600: 220 12% 22%;
+    --grey-700: 220 15% 15%;
     
-    /* Shadows - subtle warm tones */
-    --shadow-sm: 0 1px 2px 0 hsl(220 15% 25% / 0.04);
-    --shadow-md: 0 4px 6px -1px hsl(220 15% 25% / 0.06);
-    --shadow-lg: 0 10px 15px -3px hsl(220 15% 25% / 0.08);
-    --shadow-primary: 0 4px 14px -3px hsl(12 55% 55% / 0.2);
+    /* Shadows - cool grey tones */
+    --shadow-sm: 0 1px 2px 0 hsl(220 20% 20% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(220 20% 20% / 0.08);
+    --shadow-lg: 0 10px 15px -3px hsl(220 20% 20% / 0.1);
+    --shadow-primary: 0 4px 14px -3px hsl(215 45% 50% / 0.25);
     
     /* Transitions */
     --transition-base: all 0.2s ease-in-out;
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    --sidebar-background: 30 20% 98%;
-    --sidebar-foreground: 220 15% 25%;
-    --sidebar-primary: 12 55% 55%;
+    --sidebar-background: 220 12% 18%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 215 45% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 25 45% 88%;
-    --sidebar-accent-foreground: 220 15% 25%;
-    --sidebar-border: 25 20% 88%;
-    --sidebar-ring: 12 55% 55%;
+    --sidebar-accent: 220 12% 28%;
+    --sidebar-accent-foreground: 210 20% 88%;
+    --sidebar-border: 220 12% 30%;
+    --sidebar-ring: 215 45% 50%;
   }
 
   .dark {
-    /* Dark mode - Deep slate with terracotta accents */
-    --background: 220 20% 10%;
-    --foreground: 25 30% 92%;
+    /* Dark mode - Deep slate blue & grey */
+    --background: 220 18% 8%;
+    --foreground: 210 20% 92%;
 
-    --card: 220 18% 14%;
-    --card-foreground: 25 30% 92%;
+    --card: 220 15% 12%;
+    --card-foreground: 210 20% 92%;
 
-    --popover: 220 18% 14%;
-    --popover-foreground: 25 30% 92%;
+    --popover: 220 15% 12%;
+    --popover-foreground: 210 20% 92%;
 
-    --primary: 12 55% 60%;
-    --primary-foreground: 220 20% 10%;
+    --primary: 215 50% 55%;
+    --primary-foreground: 220 18% 8%;
 
-    --secondary: 220 15% 20%;
-    --secondary-foreground: 25 30% 85%;
+    --secondary: 220 12% 18%;
+    --secondary-foreground: 210 20% 85%;
 
-    --muted: 220 12% 22%;
+    --muted: 220 12% 20%;
     --muted-foreground: 210 12% 60%;
 
-    --accent: 210 25% 45%;
-    --accent-foreground: 25 30% 92%;
+    --accent: 210 30% 50%;
+    --accent-foreground: 210 20% 92%;
 
-    --destructive: 0 63% 40%;
-    --destructive-foreground: 25 30% 92%;
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 210 20% 92%;
 
-    --border: 220 15% 22%;
-    --input: 220 15% 22%;
-    --ring: 12 55% 60%;
+    --border: 220 12% 20%;
+    --input: 220 12% 20%;
+    --ring: 215 50% 55%;
     
-    --sidebar-background: 220 20% 12%;
-    --sidebar-foreground: 25 30% 92%;
-    --sidebar-primary: 12 55% 60%;
-    --sidebar-primary-foreground: 220 20% 10%;
-    --sidebar-accent: 220 15% 20%;
-    --sidebar-accent-foreground: 25 30% 85%;
-    --sidebar-border: 220 15% 22%;
-    --sidebar-ring: 12 55% 60%;
+    --sidebar-background: 220 18% 10%;
+    --sidebar-foreground: 210 20% 92%;
+    --sidebar-primary: 215 50% 55%;
+    --sidebar-primary-foreground: 220 18% 8%;
+    --sidebar-accent: 220 12% 18%;
+    --sidebar-accent-foreground: 210 20% 85%;
+    --sidebar-border: 220 12% 20%;
+    --sidebar-ring: 215 50% 55%;
   }
 }
 
