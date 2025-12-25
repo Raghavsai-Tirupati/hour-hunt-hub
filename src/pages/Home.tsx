@@ -1,13 +1,19 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Hospital, Clock, Search, MapPin, Users, Star, ArrowRight } from "lucide-react";
+import { Hospital, Clock, Search, MapPin, Users, Star, ArrowRight, Building2, TrendingUp } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import AnimatedCounter from "@/components/AnimatedCounter";
+import { useInView } from "@/hooks/useInView";
 import heroImage from "@/assets/hero-medical-purple.png";
 import heroVideo from "@/assets/hero-video.mp4";
 
 const Home = () => {
+  const { ref: statsRef, isInView: statsInView } = useInView({ threshold: 0.2 });
+  const { ref: featuresRef, isInView: featuresInView } = useInView({ threshold: 0.1 });
+  const { ref: ctaRef, isInView: ctaInView } = useInView({ threshold: 0.2 });
+
   const features = [
     {
       icon: Hospital,
@@ -27,9 +33,9 @@ const Home = () => {
   ];
 
   const stats = [
-    { value: "500+", label: "Clinical Opportunities" },
-    { value: "50+", label: "Cities Covered" },
-    { value: "95%", label: "Student Success Rate" },
+    { value: 500, suffix: "+", label: "Clinical Opportunities", icon: Building2 },
+    { value: 50, suffix: "+", label: "Cities Covered", icon: MapPin },
+    { value: 95, suffix: "%", label: "Student Success Rate", icon: TrendingUp },
   ];
 
   return (
@@ -53,6 +59,13 @@ const Home = () => {
           {/* Gradient Overlay for readability */}
           <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/70 to-background/30" />
         </div>
+
+        {/* Floating Decorative Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 right-[15%] w-64 h-64 rounded-full bg-primary/10 blur-3xl animate-float" />
+          <div className="absolute bottom-32 right-[25%] w-48 h-48 rounded-full bg-primary/15 blur-2xl animate-float-delay-1" />
+          <div className="absolute top-1/3 right-[10%] w-32 h-32 rounded-full bg-primary/20 blur-xl animate-float-delay-2" />
+        </div>
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-2xl space-y-8">
@@ -62,7 +75,12 @@ const Home = () => {
               </span>
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight animate-fade-in-up-delay-1">
                 Find Your Perfect{" "}
-                <span className="text-primary">Clinical Experience</span>
+                <span className="text-primary relative">
+                  Clinical Experience
+                  <svg className="absolute -bottom-2 left-0 w-full h-3 text-primary/30" viewBox="0 0 200 12" preserveAspectRatio="none">
+                    <path d="M0,6 Q50,0 100,6 T200,6" stroke="currentColor" strokeWidth="4" fill="none" className="animate-[fade-in_1s_ease-out_0.5s_forwards] opacity-0" />
+                  </svg>
+                </span>
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed animate-fade-in-up-delay-2">
                 The crowdsourced platform helping pre-med students discover and secure 
@@ -71,13 +89,13 @@ const Home = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 animate-fade-in-up-delay-3">
-              <Button asChild size="lg" className="text-base px-8 py-6 shadow-lg hover:shadow-xl transition-all">
+              <Button asChild size="lg" className="text-base px-8 py-6 shadow-lg hover:shadow-xl transition-all hover:scale-105 animate-pulse-glow">
                 <Link to="/opportunities">
                   <Search className="mr-2 h-5 w-5" />
                   Explore Opportunities
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="text-base px-8 py-6 bg-background/50 backdrop-blur-sm hover:bg-background/80 border-border/50">
+              <Button asChild size="lg" variant="outline" className="text-base px-8 py-6 bg-background/50 backdrop-blur-sm hover:bg-background/80 border-border/50 hover:scale-105 transition-all">
                 <Link to="/about">
                   Learn More
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -108,15 +126,40 @@ const Home = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-primary/5 border-y border-border">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <section 
+        ref={statsRef}
+        className="py-20 bg-gradient-to-b from-primary/5 via-primary/10 to-primary/5 border-y border-border relative overflow-hidden"
+      >
+        {/* Background decoration */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
+          <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
+        </div>
+
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
             {stats.map((stat, index) => (
-              <div key={index} className="text-center group">
-                <div className="text-4xl md:text-5xl font-bold text-primary mb-2 group-hover:scale-110 transition-transform">
-                  {stat.value}
+              <div 
+                key={index} 
+                className={`text-center group p-8 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover-lift ${
+                  statsInView ? `animate-stagger-${index + 1}` : 'opacity-0'
+                }`}
+              >
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-6 group-hover:bg-primary/20 transition-colors group-hover:scale-110 transform duration-300">
+                  <stat.icon className="h-8 w-8 text-primary" />
                 </div>
-                <div className="text-sm text-muted-foreground font-medium">{stat.label}</div>
+                <div className="text-4xl md:text-5xl font-bold text-primary mb-3">
+                  {statsInView ? (
+                    <AnimatedCounter 
+                      end={stat.value} 
+                      suffix={stat.suffix}
+                      duration={2000}
+                    />
+                  ) : (
+                    `0${stat.suffix}`
+                  )}
+                </div>
+                <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -124,12 +167,19 @@ const Home = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-primary font-medium text-sm uppercase tracking-wider">Features</span>
-            <h2 className="text-3xl md:text-4xl font-bold mt-3 mb-4">Why Choose ClinicalHours?</h2>
-            <p className="text-muted-foreground text-lg">
+      <section ref={featuresRef} className="py-24 relative">
+        {/* Decorative background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-gradient-radial from-primary/5 to-transparent blur-3xl" />
+        </div>
+
+        <div className="container mx-auto px-4 relative z-10">
+          <div className={`text-center max-w-2xl mx-auto mb-16 ${featuresInView ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary font-medium text-sm uppercase tracking-wider mb-4">
+              Features
+            </span>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mt-3 mb-6">Why Choose ClinicalHours?</h2>
+            <p className="text-muted-foreground text-lg md:text-xl leading-relaxed">
               Everything you need to find, evaluate, and secure clinical opportunities in one place.
             </p>
           </div>
@@ -138,13 +188,15 @@ const Home = () => {
             {features.map((feature, index) => (
               <Card 
                 key={index} 
-                className="group border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/30 hover:shadow-lg transition-all duration-300"
+                className={`group border-border/50 bg-card/80 backdrop-blur-sm hover:border-primary/50 hover-lift ${
+                  featuresInView ? `animate-stagger-${index + 1}` : 'opacity-0'
+                }`}
               >
-                <CardHeader>
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                    <feature.icon className="h-7 w-7 text-primary" />
+                <CardHeader className="pb-4">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-5 group-hover:from-primary/30 group-hover:to-primary/10 transition-all duration-300 group-hover:scale-110">
+                    <feature.icon className="h-8 w-8 text-primary" />
                   </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                  <CardTitle className="text-xl md:text-2xl group-hover:text-primary transition-colors">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-base leading-relaxed">{feature.description}</CardDescription>
@@ -156,28 +208,39 @@ const Home = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 relative overflow-hidden">
+      <section ref={ctaRef} className="py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-[hsl(280,65%,55%)] animate-gradient" />
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iNCIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
+        
+        {/* Floating decorative elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-10 left-[10%] w-20 h-20 rounded-full border-2 border-primary-foreground/20 animate-float" />
+          <div className="absolute bottom-20 right-[15%] w-32 h-32 rounded-full border-2 border-primary-foreground/10 animate-float-delay-1" />
+          <div className="absolute top-1/2 left-[5%] w-16 h-16 rounded-full bg-primary-foreground/5 animate-float-delay-2" />
+          <div className="absolute top-20 right-[8%] w-24 h-24 rounded-full bg-primary-foreground/5 animate-float-slow" />
+        </div>
+
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl mx-auto text-center space-y-8">
-            <h2 className="text-3xl md:text-5xl font-bold text-primary-foreground">
+          <div className={`max-w-3xl mx-auto text-center space-y-8 ${ctaInView ? 'animate-scale-in' : 'opacity-0'}`}>
+            <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-primary-foreground leading-tight">
               Ready to Start Your Clinical Journey?
             </h2>
-            <p className="text-xl text-primary-foreground/90 leading-relaxed">
+            <p className="text-xl md:text-2xl text-primary-foreground/90 leading-relaxed max-w-2xl mx-auto">
               Join thousands of pre-med students who have found their clinical opportunities through our platform.
             </p>
-            <Button 
-              asChild 
-              size="lg" 
-              variant="secondary" 
-              className="text-base px-10 py-6 shadow-xl hover:shadow-2xl transition-all"
-            >
-              <Link to="/auth">
-                Get Started Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
+            <div className="pt-4">
+              <Button 
+                asChild 
+                size="lg" 
+                variant="secondary" 
+                className="text-base md:text-lg px-10 py-7 shadow-xl hover:shadow-2xl transition-all hover:scale-105 animate-pulse-glow"
+              >
+                <Link to="/auth">
+                  Get Started Free
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>
