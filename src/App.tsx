@@ -14,6 +14,7 @@ import MapView from "./pages/MapView";
 import AdminImportHospitals from "./pages/AdminImportHospitals";
 import NotFound from "./pages/NotFound";
 import { useAutoImportHospitals } from "./hooks/useAutoImportHospitals";
+import ChatBot from "./components/ChatBot";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ function AppContent() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      <ChatBot />
     </>
   );
 }
