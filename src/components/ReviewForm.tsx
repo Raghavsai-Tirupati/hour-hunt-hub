@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfileComplete } from "@/hooks/useProfileComplete";
+import { ProfileGate } from "@/components/ProfileGate";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -29,7 +31,9 @@ interface RatingCategory {
 
 const ReviewForm = ({ opportunityId, opportunityName, onReviewSubmitted }: ReviewFormProps) => {
   const { user } = useAuth();
+  const { isComplete, isLoading: profileLoading, missingFields } = useProfileComplete();
   const [open, setOpen] = useState(false);
+  const [showProfileGate, setShowProfileGate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [comment, setComment] = useState("");
   const [ratings, setRatings] = useState<RatingCategory[]>([
@@ -42,6 +46,20 @@ const ReviewForm = ({ opportunityId, opportunityName, onReviewSubmitted }: Revie
 
   const handleRatingChange = (key: string, value: number) => {
     setRatings(ratings.map((r) => (r.key === key ? { ...r, value } : r)));
+  };
+
+  const handleOpenReviewDialog = () => {
+    if (!user) {
+      toast.error("Please sign in to write a review");
+      return;
+    }
+
+    if (!isComplete) {
+      setShowProfileGate(true);
+      return;
+    }
+
+    setOpen(true);
   };
 
   const handleSubmit = async () => {
@@ -104,64 +122,77 @@ const ReviewForm = ({ opportunityId, opportunityName, onReviewSubmitted }: Revie
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Star className="mr-2 h-4 w-4" />
-          Write Review
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Review {opportunityName}</DialogTitle>
-          <DialogDescription>
-            Share your experience to help other students
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleOpenReviewDialog}
+        disabled={profileLoading}
+      >
+        <Star className="mr-2 h-4 w-4" />
+        Write Review
+      </Button>
 
-        <div className="space-y-6 py-4">
-          {ratings.map((rating) => (
-            <div key={rating.key} className="space-y-2">
-              <Label className="text-sm font-medium">
-                {rating.label}
-                {rating.key === "rating" && <span className="text-destructive ml-1">*</span>}
-              </Label>
-              <StarRating
-                value={rating.value}
-                onChange={(v) => handleRatingChange(rating.key, v)}
+      <ProfileGate
+        open={showProfileGate}
+        onOpenChange={setShowProfileGate}
+        missingFields={missingFields}
+        action="leave a review"
+      />
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Review {opportunityName}</DialogTitle>
+            <DialogDescription>
+              Share your experience to help other students
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {ratings.map((rating) => (
+              <div key={rating.key} className="space-y-2">
+                <Label className="text-sm font-medium">
+                  {rating.label}
+                  {rating.key === "rating" && <span className="text-destructive ml-1">*</span>}
+                </Label>
+                <StarRating
+                  value={rating.value}
+                  onChange={(v) => handleRatingChange(rating.key, v)}
+                />
+              </div>
+            ))}
+
+            <div className="space-y-2">
+              <Label htmlFor="comment">Comment (optional)</Label>
+              <Textarea
+                id="comment"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Share details about your experience..."
+                rows={4}
               />
             </div>
-          ))}
-
-          <div className="space-y-2">
-            <Label htmlFor="comment">Comment (optional)</Label>
-            <Textarea
-              id="comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Share details about your experience..."
-              rows={4}
-            />
           </div>
-        </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              "Submit Review"
-            )}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Review"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

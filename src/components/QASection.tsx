@@ -6,10 +6,12 @@ import { MessageCircle, ChevronUp, ChevronDown, Send, MessageSquare } from "luci
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import { useProfileComplete } from "@/hooks/useProfileComplete";
+import { ProfileGate } from "@/components/ProfileGate";
+import { UserProfileBadge } from "@/components/UserProfileBadge";
 import {
   Collapsible,
   CollapsibleContent,
-  CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
 interface Question {
@@ -17,6 +19,10 @@ interface Question {
   title: string;
   body: string | null;
   author_name: string | null;
+  author_university: string | null;
+  author_major: string | null;
+  author_graduation_year: number | null;
+  author_clinical_hours: number | null;
   vote_count: number;
   answer_count: number;
   created_at: string;
@@ -27,6 +33,10 @@ interface Answer {
   id: string;
   body: string;
   author_name: string | null;
+  author_university: string | null;
+  author_major: string | null;
+  author_graduation_year: number | null;
+  author_clinical_hours: number | null;
   vote_count: number;
   is_accepted: boolean;
   created_at: string;
@@ -56,7 +66,10 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
   const [displayCount, setDisplayCount] = useState(INITIAL_QUESTIONS);
   const [totalQuestionCount, setTotalQuestionCount] = useState(0);
   const [answerDisplayCount, setAnswerDisplayCount] = useState<Record<string, number>>({});
+  const [showProfileGate, setShowProfileGate] = useState(false);
+  const [gateAction, setGateAction] = useState("participate");
   const { toast } = useToast();
+  const { isComplete, missingFields } = useProfileComplete();
 
   useEffect(() => {
     fetchQuestions();
@@ -168,6 +181,23 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
     });
   }, [answerDisplayCount]);
 
+  const checkProfileAndProceed = (action: string, callback: () => void) => {
+    if (!isComplete) {
+      setGateAction(action);
+      setShowProfileGate(true);
+      return;
+    }
+    callback();
+  };
+
+  const handleShowAskForm = () => {
+    if (!userId) {
+      toast({ title: "Please sign in to ask a question", variant: "destructive" });
+      return;
+    }
+    checkProfileAndProceed("ask a question", () => setShowAskForm(true));
+  };
+
   const handleAskQuestion = async () => {
     if (!newQuestion.title.trim()) return;
 
@@ -201,6 +231,12 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast({ title: "Please sign in to answer", variant: "destructive" });
+      return;
+    }
+
+    if (!isComplete) {
+      setGateAction("post an answer");
+      setShowProfileGate(true);
       return;
     }
 
@@ -275,6 +311,13 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
 
   return (
     <div className="space-y-4">
+      <ProfileGate
+        open={showProfileGate}
+        onOpenChange={setShowProfileGate}
+        missingFields={missingFields}
+        action={gateAction}
+      />
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <MessageCircle className="h-4 w-4" />
@@ -284,7 +327,7 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowAskForm(true)}
+            onClick={handleShowAskForm}
           >
             Ask a Question
           </Button>
@@ -376,8 +419,14 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
                         {question.body}
                       </p>
                     )}
-                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      <span>{question.author_name || "Anonymous"}</span>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+                      <UserProfileBadge
+                        fullName={question.author_name}
+                        university={question.author_university}
+                        major={question.author_major}
+                        graduationYear={question.author_graduation_year}
+                        className="scale-90 origin-left"
+                      />
                       <span>•</span>
                       <span>{formatDistanceToNow(new Date(question.created_at), { addSuffix: true })}</span>
                       <span>•</span>
@@ -420,8 +469,14 @@ export function QASection({ opportunityId, opportunityName }: QASectionProps) {
                               </div>
                               <div className="flex-1">
                                 <p className="text-sm">{answer.body}</p>
-                                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                  <span>{answer.author_name || "Anonymous"}</span>
+                                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground flex-wrap">
+                                  <UserProfileBadge
+                                    fullName={answer.author_name}
+                                    university={answer.author_university}
+                                    major={answer.author_major}
+                                    graduationYear={answer.author_graduation_year}
+                                    className="scale-90 origin-left"
+                                  />
                                   <span>•</span>
                                   <span>{formatDistanceToNow(new Date(answer.created_at), { addSuffix: true })}</span>
                                 </div>

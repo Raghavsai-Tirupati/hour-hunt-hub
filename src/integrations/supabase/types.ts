@@ -501,7 +501,11 @@ export type Database = {
     Views: {
       answers_with_votes: {
         Row: {
+          author_clinical_hours: number | null
+          author_graduation_year: number | null
+          author_major: string | null
           author_name: string | null
+          author_university: string | null
           body: string | null
           created_at: string | null
           id: string | null
@@ -565,7 +569,11 @@ export type Database = {
       questions_with_votes: {
         Row: {
           answer_count: number | null
+          author_clinical_hours: number | null
+          author_graduation_year: number | null
+          author_major: string | null
           author_name: string | null
+          author_university: string | null
           body: string | null
           created_at: string | null
           id: string | null
