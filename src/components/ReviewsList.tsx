@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, User, ChevronDown } from "lucide-react";
+import { Star, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
+import { UserProfileBadge } from "@/components/UserProfileBadge";
 
 interface Review {
   id: string;
@@ -17,6 +18,10 @@ interface Review {
   user_id: string;
   profiles: {
     full_name: string;
+    university: string | null;
+    major: string | null;
+    graduation_year: number | null;
+    clinical_hours: number | null;
   } | null;
 }
 
@@ -46,10 +51,10 @@ const ReviewsList = ({ opportunityId, refreshTrigger }: ReviewsListProps) => {
 
         setTotalCount(count || 0);
 
-        // Then fetch the actual reviews
+        // Then fetch the actual reviews with extended profile data
         const { data, error } = await supabase
           .from("reviews")
-          .select("*, profiles(full_name)")
+          .select("*, profiles(full_name, university, major, graduation_year, clinical_hours)")
           .eq("opportunity_id", opportunityId)
           .order("created_at", { ascending: false })
           .limit(displayCount);
@@ -115,18 +120,17 @@ const ReviewsList = ({ opportunityId, refreshTrigger }: ReviewsListProps) => {
         <Card key={review.id} className="bg-muted/30">
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">
-                    {review.profiles?.full_name || "Unknown User"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(review.created_at), "MMM d, yyyy")}
-                  </p>
-                </div>
+              <div className="flex-1">
+                <UserProfileBadge
+                  fullName={review.profiles?.full_name || null}
+                  university={review.profiles?.university}
+                  major={review.profiles?.major}
+                  graduationYear={review.profiles?.graduation_year}
+                  clinicalHours={review.profiles?.clinical_hours}
+                />
+                <p className="text-xs text-muted-foreground mt-1 ml-9">
+                  {format(new Date(review.created_at), "MMM d, yyyy")}
+                </p>
               </div>
               <StarDisplay rating={review.rating} />
             </div>
