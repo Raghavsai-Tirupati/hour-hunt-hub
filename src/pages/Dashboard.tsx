@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfileComplete } from "@/hooks/useProfileComplete";
 import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
@@ -10,7 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Trash2, MapPin, Phone, Mail, Globe, Bell, CalendarPlus } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Loader2, Plus, Trash2, MapPin, Phone, Mail, Globe, 
+  Map, Building2, ClipboardCheck, User, BookOpen, 
+  Lightbulb, Target, Heart, MessageCircle, ArrowRight,
+  Bookmark, CheckCircle2, Clock, TrendingUp
+} from "lucide-react";
 import { ReminderDialog } from "@/components/ReminderDialog";
 import { downloadIcsFile, createOpportunityReminder } from "@/lib/calendar";
 import {
@@ -58,8 +65,32 @@ interface SavedOpportunity {
   opportunities: Opportunity;
 }
 
+const tips = [
+  {
+    icon: Target,
+    title: "Set Clear Goals",
+    description: "Aim for 100-200 clinical hours before applying to medical school.",
+  },
+  {
+    icon: Heart,
+    title: "Quality Over Quantity",
+    description: "Deep, meaningful experiences matter more than simply logging hours.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Build Relationships",
+    description: "Connect with physicians and staff—they can provide valuable mentorship and letters.",
+  },
+  {
+    icon: BookOpen,
+    title: "Reflect & Document",
+    description: "Keep a journal of meaningful patient interactions for your application essays.",
+  },
+];
+
 const Dashboard = () => {
   const { user, loading: authLoading } = useAuth();
+  const { isComplete, isLoading: profileLoading, missingFields, profile } = useProfileComplete();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -69,6 +100,7 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [totalOpportunities, setTotalOpportunities] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -103,12 +135,13 @@ const Dashboard = () => {
       setLoading(true);
       
       // Fetch all opportunities
-      const { data: oppsData, error: oppsError } = await supabase
+      const { data: oppsData, error: oppsError, count } = await supabase
         .from("opportunities")
-        .select("*");
+        .select("*", { count: 'exact' });
 
       if (oppsError) throw oppsError;
 
+      setTotalOpportunities(count || 0);
       let processedOpps = oppsData || [];
       
       // Calculate distances and sort if location available
@@ -288,6 +321,23 @@ const Dashboard = () => {
     }
   };
 
+  // Calculate stats
+  const trackedCount = savedOpportunities.length;
+  const contactedCount = savedOpportunities.filter(s => s.contacted).length;
+  const appliedCount = savedOpportunities.filter(s => s.applied).length;
+  const interviewCount = savedOpportunities.filter(s => s.scheduled_interview).length;
+  const nearbyCount = userLocation 
+    ? opportunities.filter(o => o.distance && o.distance <= 25).length 
+    : 0;
+  
+  // Profile completion percentage
+  const totalFields = 4; // full_name, university, major, graduation_year
+  const completedFields = totalFields - missingFields.length;
+  const profileCompletionPercent = Math.round((completedFields / totalFields) * 100);
+
+  // Get user's first name for greeting
+  const firstName = profile?.full_name?.split(' ')[0] || 'there';
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -301,15 +351,134 @@ const Dashboard = () => {
       <Navigation />
       
       <main className="flex-1 container mx-auto px-4 py-8">
+        {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-foreground">My Dashboard</h1>
-          <p className="text-muted-foreground">
-            Track your clinical opportunity applications and progress
-          </p>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl lg:text-4xl font-bold mb-2 text-foreground">
+                Welcome back, {firstName}!
+              </h1>
+              <p className="text-muted-foreground">
+                Here's an overview of your clinical journey progress.
+              </p>
+            </div>
+            
+            {/* Profile Completion Card */}
+            {!isComplete && !profileLoading && (
+              <Card className="lg:w-80 bg-primary/5 border-primary/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Complete Your Profile</p>
+                      <p className="text-xs text-muted-foreground">{profileCompletionPercent}% complete</p>
+                    </div>
+                  </div>
+                  <Progress value={profileCompletionPercent} className="h-2 mb-3" />
+                  <Button asChild size="sm" variant="outline" className="w-full">
+                    <Link to="/profile">
+                      Complete Profile <ArrowRight className="h-4 w-4 ml-2" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Stats Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Card className="bg-card border-border">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Bookmark className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{trackedCount}</p>
+                  <p className="text-xs text-muted-foreground">Saved Opportunities</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{appliedCount}</p>
+                  <p className="text-xs text-muted-foreground">Applications Sent</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{interviewCount}</p>
+                  <p className="text-xs text-muted-foreground">Interviews Scheduled</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <Building2 className="h-5 w-5 text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{totalOpportunities}</p>
+                  <p className="text-xs text-muted-foreground">Total Opportunities</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Action Buttons */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Button asChild variant="outline" className="h-auto py-4 flex-col gap-2">
+            <Link to="/map">
+              <Map className="h-6 w-6" />
+              <span>Explore Map</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto py-4 flex-col gap-2">
+            <Link to="/opportunities">
+              <Building2 className="h-6 w-6" />
+              <span>Browse All</span>
+            </Link>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-auto py-4 flex-col gap-2"
+            onClick={() => document.getElementById('tracker-section')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            <ClipboardCheck className="h-6 w-6" />
+            <span>My Tracker</span>
+          </Button>
+          <Button asChild variant="outline" className="h-auto py-4 flex-col gap-2">
+            <Link to="/profile">
+              <User className="h-6 w-6" />
+              <span>My Profile</span>
+            </Link>
+          </Button>
         </div>
 
         {/* My Opportunities Tracker */}
-        <Card className="mb-8 bg-card border-border">
+        <Card id="tracker-section" className="mb-8 bg-card border-border">
           <CardHeader>
             <CardTitle className="text-foreground">My Opportunities Tracker</CardTitle>
             <CardDescription>
@@ -319,12 +488,17 @@ const Dashboard = () => {
           <CardContent>
             {savedOpportunities.length === 0 ? (
               <div className="text-center py-12">
+                <div className="h-16 w-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                  <ClipboardCheck className="h-8 w-8 text-muted-foreground" />
+                </div>
                 <p className="text-muted-foreground mb-4">
                   You haven't added any opportunities to your tracker yet.
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Add opportunities from the list below to start tracking.
-                </p>
+                <Button asChild>
+                  <Link to="/opportunities">
+                    Browse Opportunities <ArrowRight className="h-4 w-4 ml-2" />
+                  </Link>
+                </Button>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -433,7 +607,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Available Opportunities */}
-        <Card className="bg-card border-border">
+        <Card className="mb-8 bg-card border-border">
           <CardHeader>
             <CardTitle className="text-foreground">Available Opportunities</CardTitle>
             <CardDescription>
@@ -463,12 +637,12 @@ const Dashboard = () => {
             </div>
 
             <div className="grid gap-4">
-              {filteredOpportunities.map((opp) => (
+              {filteredOpportunities.slice(0, 5).map((opp) => (
                 <Card key={opp.id} className="bg-card/50 border-border">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <h3 className="text-lg font-semibold text-foreground">{opp.name}</h3>
                           <Badge variant="outline" className="capitalize">
                             {opp.type}
@@ -542,6 +716,42 @@ const Dashboard = () => {
                   </p>
                 </div>
               )}
+
+              {filteredOpportunities.length > 5 && (
+                <div className="text-center pt-4">
+                  <Button asChild variant="outline">
+                    <Link to="/opportunities">
+                      View All {filteredOpportunities.length} Opportunities <ArrowRight className="h-4 w-4 ml-2" />
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tips & Resources Section */}
+        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-primary" />
+              <CardTitle className="text-foreground">Tips for Success</CardTitle>
+            </div>
+            <CardDescription>
+              Make the most of your clinical experience journey
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {tips.map((tip, index) => (
+                <div key={index} className="p-4 rounded-lg bg-background/50 border border-border">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                    <tip.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h4 className="font-medium text-foreground mb-1">{tip.title}</h4>
+                  <p className="text-sm text-muted-foreground">{tip.description}</p>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
